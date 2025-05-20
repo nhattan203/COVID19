@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thống kê COVID-19 - Việt Nam & Thế giới</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f8ff;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    h1, h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    .section {
+      max-width: 900px;
+      margin: 0 auto 40px;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+    th {
+      background-color: #3498db;
+      color: white;
+    }
+    .loading {
+      text-align: center;
+      color: gray;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Thống kê COVID-19</h1>
+
+  <div class="section" id="global-section">
+    <h2>🌍 Thế giới</h2>
+    <p id="global-stats" class="loading">Đang tải dữ liệu...</p>
+  </div>
+
+  <div class="section" id="vn-section">
+    <h2>🇻🇳 Việt Nam</h2>
+    <p id="vietnam-stats" class="loading">Đang tải dữ liệu...</p>
+    <h3>📅 Thống kê 7 ngày gần nhất</h3>
+    <table id="vietnam-daily">
+      <thead>
+        <tr>
+          <th>Ngày</th>
+          <th>Ca nhiễm mới</th>
+          <th>Tử vong mới</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="3" class="loading">Đang tải dữ liệu...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    async function fetchCovidData() {
+      const globalEl = document.getElementById('global-stats');
+      const vnEl = document.getElementById('vietnam-stats');
+      const tableBody = document.querySelector('#vietnam-daily tbody');
+
+      try {
+        // Thế giới
+        const worldRes = await fetch('https://disease.sh/v3/covid-19/all');
+        const worldData = await worldRes.json();
+        globalEl.textContent = `Tổng ca nhiễm: ${worldData.cases.toLocaleString()} | Tử vong: ${worldData.deaths.toLocaleString()} (Cập nhật: ${new Date(worldData.updated).toLocaleDateString("vi-VN")})`;
+
+        // Việt Nam
+        const vnRes = await fetch('https://disease.sh/v3/covid-19/countries/vn');
+        const vnData = await vnRes.json();
+        vnEl.textContent = `Tổng ca nhiễm: ${vnData.cases.toLocaleString()} | Tử vong: ${vnData.deaths.toLocaleString()} (Cập nhật: ${new Date(vnData.updated).toLocaleDateString("vi-VN")})`;
+
+        // 7 ngày gần nhất
+        const historyRes = await fetch('https://disease.sh/v3/covid-19/historical/vn?lastdays=8');
+        const historyData = await historyRes.json();
+        const timeline = historyData.timeline;
+
+        const dates = Object.keys(timeline.cases);
+        tableBody.innerHTML = '';
+
+        for (let i = 1; i < dates.length; i++) {
+          const date = dates[i];
+          const newCases = timeline.cases[date] - timeline.cases[dates[i - 1]];
+          const newDeaths = timeline.deaths[date] - timeline.deaths[dates[i - 1]];
+
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${date}</td>
+            <td>${newCases.toLocaleString()}</td>
+            <td>${newDeaths.toLocaleString()}</td>
+          `;
+          tableBody.appendChild(row);
+        }
+
+      } catch (err) {
+        globalEl.textContent = "Lỗi khi tải dữ liệu toàn cầu.";
+        vnEl.textContent = "Lỗi khi tải dữ liệu Việt Nam.";
+        tableBody.innerHTML = "<tr><td colspan='3'>Không thể tải dữ liệu.</td></tr>";
+        console.error(err);
+      }
+    }
+
+    fetchCovidData();
+  </script>
+</body>
+</html>
