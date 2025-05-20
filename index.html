@@ -147,7 +147,10 @@ row.innerHTML = `
     // Chạy ngay khi tải trang
     fetchCovidData();
     // Tự động làm mới mỗi 60 giây
-    setInterval(fetchCovidData, 60_000);
+setInterval(() => {
+  fetchCovidData(); // Gọi lại API, cập nhật bảng mà không reload
+}, 1000 * 60 * 1); // 1 phút
+
   </script>
 </body>
 </html>
