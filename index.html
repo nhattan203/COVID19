@@ -42,6 +42,12 @@
       text-align: center;
       color: gray;
     }
+    .updated {
+      text-align: center;
+      font-size: 0.9em;
+      color: #555;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -50,11 +56,13 @@
   <div class="section" id="global-section">
     <h2>🌍 Thế giới</h2>
     <p id="global-stats" class="loading">Đang tải dữ liệu...</p>
+    <p id="global-updated" class="updated"></p>
   </div>
 
   <div class="section" id="vn-section">
     <h2>🇻🇳 Việt Nam</h2>
     <p id="vietnam-stats" class="loading">Đang tải dữ liệu...</p>
+    <p id="vn-updated" class="updated"></p>
     <h3>📅 Thống kê 7 ngày gần nhất</h3>
     <table id="vietnam-daily">
       <thead>
@@ -73,39 +81,59 @@
   <script>
     async function fetchCovidData() {
       const globalEl = document.getElementById('global-stats');
+      const globalUpdatedEl = document.getElementById('global-updated');
       const vnEl = document.getElementById('vietnam-stats');
+      const vnUpdatedEl = document.getElementById('vn-updated');
       const tableBody = document.querySelector('#vietnam-daily tbody');
 
       try {
-        // Thế giới
+        // 1. Lấy dữ liệu Thế giới
         const worldRes = await fetch('https://disease.sh/v3/covid-19/all');
         const worldData = await worldRes.json();
-        globalEl.textContent = `Tổng ca nhiễm: ${worldData.cases.toLocaleString()} | Tử vong: ${worldData.deaths.toLocaleString()} (Cập nhật: ${new Date(worldData.updated).toLocaleDateString("vi-VN")})`;
+        const worldDate = new Date(worldData.updated).toLocaleString('vi-VN');
+        globalEl.textContent = `Tổng ca nhiễm: ${worldData.cases.toLocaleString()} | Tử vong: ${worldData.deaths.toLocaleString()}`;
+        globalUpdatedEl.textContent = `Cập nhật: ${worldDate}`;
 
-        // Việt Nam
+        // 2. Lấy dữ liệu Việt Nam tổng quan
         const vnRes = await fetch('https://disease.sh/v3/covid-19/countries/vn');
         const vnData = await vnRes.json();
-        vnEl.textContent = `Tổng ca nhiễm: ${vnData.cases.toLocaleString()} | Tử vong: ${vnData.deaths.toLocaleString()} (Cập nhật: ${new Date(vnData.updated).toLocaleDateString("vi-VN")})`;
+        const vnDate = new Date(vnData.updated).toLocaleString('vi-VN');
+        vnEl.textContent = `Tổng ca nhiễm: ${vnData.cases.toLocaleString()} | Tử vong: ${vnData.deaths.toLocaleString()}`;
+        vnUpdatedEl.textContent = `Cập nhật: ${vnDate}`;
 
-        // 7 ngày gần nhất
-        const historyRes = await fetch('https://disease.sh/v3/covid-19/historical/vn?lastdays=8');
-        const historyData = await historyRes.json();
-        const timeline = historyData.timeline;
+        // 3. Lấy lịch sử 8 ngày Việt Nam (để tính 7 ngày mới)
+        const histRes = await fetch('https://disease.sh/v3/covid-19/historical/vn?lastdays=8');
+        const histData = await histRes.json();
+        const timeline = histData.timeline;
 
-        const dates = Object.keys(timeline.cases);
+        // 4. Xây mảng 7 ngày gần nhất tính đến hôm nay
+        const days = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          days.push(d.toISOString().split('T')[0]);
+        }
+
+        // 5. Tính ca mới & tử vong mới mỗi ngày
         tableBody.innerHTML = '';
+        for (let i = 1; i < days.length; i++) {
+          const date = days[i];
+const prevDate = days[i - 1];
+const newCases = (timeline.cases[date] || 0) - (timeline.cases[prevDate] || 0);
+const newDeaths = (timeline.deaths[date] || 0) - (timeline.deaths[prevDate] || 0);
 
-        for (let i = 1; i < dates.length; i++) {
-          const date = dates[i];
-          const newCases = timeline.cases[date] - timeline.cases[dates[i - 1]];
-          const newDeaths = timeline.deaths[date] - timeline.deaths[dates[i - 1]];
+// Định dạng ngày dd/mm/yyyy
+const [year, month, day] = date.split('-');
+const formattedDate = `${day}/${month}/${year}`;
+
 
           const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${date}</td>
-            <td>${newCases.toLocaleString()}</td>
-            <td>${newDeaths.toLocaleString()}</td>
-          `;
+row.innerHTML = `
+  <td>${formattedDate}</td>
+  <td>${newCases.toLocaleString()}</td>
+  <td>${newDeaths.toLocaleString()}</td>
+`;
+
           tableBody.appendChild(row);
         }
 
@@ -117,7 +145,10 @@
       }
     }
 
+    // Chạy ngay khi tải trang
     fetchCovidData();
+    // Tự động làm mới mỗi 60 giây
+    setInterval(fetchCovidData, 60_000);
   </script>
 </body>
 </html>
