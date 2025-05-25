@@ -1,214 +1,108 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>COVID-19 Thế giới & Việt Nam</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tin tức COVID-19 mới nhất</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f9f9f9;
-      color: #333;
+      margin: 0;
+      background: #f4f4f4;
     }
-    h2 {
-      color: #0066cc;
-    }
-    .section {
-      margin-bottom: 30px;
-    }
-    .stat-box {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin: 10px 0;
-    }
-    .stat-card {
-      flex: 1;
-      min-width: 120px;
-      padding: 10px;
-      border-radius: 8px;
-      color: #222;
-      font-weight: bold;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .stat-cases { background: #ffe6e6; }
-    .stat-deaths { background: #fff2e6; }
-    .stat-recovered { background: #e6ffe6; }
-
-    .updated {
-      font-size: 0.9em;
-      color: gray;
-      margin-top: 4px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-      background: #fff;
-    }
-    th, td {
-      padding: 8px;
-      border: 1px solid #ccc;
+    header {
+      background: #d32f2f;
+      color: white;
+      padding: 1rem;
       text-align: center;
     }
-    th {
-      background-color: #e0e0e0;
+    main {
+      max-width: 800px;
+      margin: auto;
+      padding: 1rem;
     }
-    table.loading {
-      opacity: 0.4;
-      transition: opacity 0.3s ease;
+    article {
+      background: white;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      border-left: 5px solid #d32f2f;
     }
-    table.flash {
-      animation: flashTable 0.4s ease;
+    article h2 {
+      margin-top: 0;
     }
-    @keyframes flashTable {
-      from { background-color: #ffffcc; }
-      to { background-color: white; }
+    article a {
+      text-decoration: none;
+      color: #d32f2f;
+    }
+    .timestamp {
+      font-size: 0.9rem;
+      color: gray;
+    }
+    footer {
+      text-align: center;
+      font-size: 0.8rem;
+      padding: 1rem;
+      color: #666;
     }
   </style>
 </head>
 <body>
-  <div class="section">
-    <h2>🌐 Thế giới</h2>
-    <div id="global-stats" class="stat-box"></div>
-    <div class="updated" id="global-updated"></div>
-    <table id="world-daily">
-      <thead>
-        <tr>
-          <th>Ngày</th>
-          <th>Ca mắc mới</th>
-          <th>Tử vong</th>
-          <th>Hồi phục</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td colspan="4">Đang tải...</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <header>
+    <h1>Tin tức COVID-19 mới nhất</h1>
+    <div class="timestamp">Cập nhật lần cuối: <span id="updateTime">--:--:--</span></div>
+  </header>
 
-  <div class="section">
-    <h2>🇻🇳 Việt Nam</h2>
-    <div id="vn-stats" class="stat-box"></div>
-    <div class="updated" id="vn-updated"></div>
-    <table id="vietnam-daily">
-      <thead>
-        <tr>
-          <th>Ngày</th>
-          <th>Ca mắc mới</th>
-          <th>Tử vong</th>
-          <th>Hồi phục</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td colspan="4">Đang tải...</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <main id="newsContainer">
+    <p>Đang tải tin tức...</p>
+  </main>
+
+  <footer>
+    Nguồn: VnExpress & Bộ Y tế – Tự động cập nhật mỗi 5 phút
+  </footer>
 
   <script>
-    let lastVNTable = '', lastWorldTable = '';
+    const newsContainer = document.getElementById('newsContainer');
+    const updateTime = document.getElementById('updateTime');
 
-    async function fetchCovidData() {
-      const globalStats = document.getElementById('global-stats');
-      const globalUpdated = document.getElementById('global-updated');
-      const vnStats = document.getElementById('vn-stats');
-      const vnUpdated = document.getElementById('vn-updated');
-
-      const worldTable = document.getElementById('world-daily');
-      const vnTable = document.getElementById('vietnam-daily');
-      const worldBody = worldTable.querySelector('tbody');
-      const vnBody = vnTable.querySelector('tbody');
-
+    async function fetchNews() {
       try {
-        worldTable.classList.add('loading');
-        vnTable.classList.add('loading');
+        const proxy = "https://api.allorigins.win/get?url=";
+        const feedUrl = encodeURIComponent("https://vnexpress.net/rss/suc-khoe.rss");
+        const response = await fetch(`${proxy}${feedUrl}`);
+        const data = await response.json();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(data.contents, "text/xml");
+        const items = xml.querySelectorAll("item");
 
-        const [worldNow, worldHist] = await Promise.all([
-          fetch('https://disease.sh/v3/covid-19/all').then(r => r.json()),
-          fetch('https://disease.sh/v3/covid-19/historical/all?lastdays=8').then(r => r.json())
-        ]);
+        newsContainer.innerHTML = "";
 
-        const [vnNow, vnHist] = await Promise.all([
-          fetch('https://disease.sh/v3/covid-19/countries/vn').then(r => r.json()),
-          fetch('https://disease.sh/v3/covid-19/historical/vn?lastdays=8').then(r => r.json())
-        ]);
+        let count = 0;
+        items.forEach(item => {
+          const title = item.querySelector("title").textContent;
+          const link = item.querySelector("link").textContent;
+          const pubDate = new Date(item.querySelector("pubDate").textContent);
 
-        const worldDate = new Date(worldNow.updated).toLocaleString('vi-VN');
-        globalStats.innerHTML = `
-          <div class="stat-card stat-cases">🦠 Ca mắc: ${worldNow.cases.toLocaleString()}</div>
-          <div class="stat-card stat-deaths">💀 Tử vong: ${worldNow.deaths.toLocaleString()}</div>
-          <div class="stat-card stat-recovered">💚 Hồi phục: ${worldNow.recovered.toLocaleString()}</div>
-        `;
-        globalUpdated.textContent = `Cập nhật: ${worldDate}`;
+          if (title.toLowerCase().includes("covid")) {
+            const article = document.createElement("article");
+            article.innerHTML = `
+              <h2><a href="${link}" target="_blank">${title}</a></h2>
+              <p class="timestamp">🕒 ${pubDate.toLocaleString("vi-VN")}</p>
+            `;
+            newsContainer.appendChild(article);
+            count++;
+          }
 
-        const vnDate = new Date(vnNow.updated).toLocaleString('vi-VN');
-        vnStats.innerHTML = `
-          <div class="stat-card stat-cases">🦠 Ca mắc: ${vnNow.cases.toLocaleString()}</div>
-          <div class="stat-card stat-deaths">💀 Tử vong: ${vnNow.deaths.toLocaleString()}</div>
-          <div class="stat-card stat-recovered">💚 Hồi phục: ${vnNow.recovered.toLocaleString()}</div>
-        `;
-        vnUpdated.textContent = `Cập nhật: ${vnDate}`;
+          if (count >= 5) return;
+        });
 
-        const days = [];
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          days.push(d.toISOString().split('T')[0]);
-        }
-
-        let worldHTML = '';
-        for (let i = 1; i < days.length; i++) {
-          const d = days[i], p = days[i - 1];
-          const [y, m, dd] = d.split('-');
-          const display = `${dd}/${m}/${y}`;
-          const cases = (worldHist.cases[d] || 0) - (worldHist.cases[p] || 0);
-          const deaths = (worldHist.deaths[d] || 0) - (worldHist.deaths[p] || 0);
-          const recovered = (worldHist.recovered[d] || 0) - (worldHist.recovered[p] || 0);
-          worldHTML += `<tr><td>${display}</td><td>${cases.toLocaleString()}</td><td>${deaths.toLocaleString()}</td><td>${recovered.toLocaleString()}</td></tr>`;
-        }
-
-        const timeline = vnHist.timeline;
-        let vnHTML = '';
-        for (let i = 1; i < days.length; i++) {
-          const d = days[i], p = days[i - 1];
-          const [y, m, dd] = d.split('-');
-          const display = `${dd}/${m}/${y}`;
-          const cases = (timeline.cases[d] || 0) - (timeline.cases[p] || 0);
-          const deaths = (timeline.deaths[d] || 0) - (timeline.deaths[p] || 0);
-          const recovered = (timeline.recovered[d] || 0) - (timeline.recovered[p] || 0);
-          vnHTML += `<tr><td>${display}</td><td>${cases.toLocaleString()}</td><td>${deaths.toLocaleString()}</td><td>${recovered.toLocaleString()}</td></tr>`;
-        }
-
-        if (worldHTML !== lastWorldTable) {
-          worldBody.innerHTML = worldHTML;
-          lastWorldTable = worldHTML;
-          worldTable.classList.add('flash');
-          setTimeout(() => worldTable.classList.remove('flash'), 400);
-        }
-        if (vnHTML !== lastVNTable) {
-          vnBody.innerHTML = vnHTML;
-          lastVNTable = vnHTML;
-          vnTable.classList.add('flash');
-          setTimeout(() => vnTable.classList.remove('flash'), 400);
-        }
-
-      } catch (err) {
-        globalStats.innerHTML = "Lỗi tải dữ liệu toàn cầu.";
-        vnStats.innerHTML = "Lỗi tải dữ liệu Việt Nam.";
-        worldBody.innerHTML = "<tr><td colspan='4'>Không thể tải dữ liệu.</td></tr>";
-        vnBody.innerHTML = "<tr><td colspan='4'>Không thể tải dữ liệu.</td></tr>";
-        console.error(err);
-      } finally {
-        worldTable.classList.remove('loading');
-        vnTable.classList.remove('loading');
+        updateTime.textContent = new Date().toLocaleTimeString("vi-VN");
+      } catch (error) {
+        newsContainer.innerHTML = "<p>Lỗi tải tin. Vui lòng thử lại sau.</p>";
       }
     }
 
-    fetchCovidData();
-    setInterval(fetchCovidData, 60 * 1000);
+    fetchNews();
+    setInterval(fetchNews, 5 * 60 * 1000); // Cập nhật mỗi 5 phút
   </script>
 </body>
 </html>
